@@ -93,7 +93,6 @@ public class PushPlugin implements FlutterPlugin, MethodCallHandler, ActivityAwa
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
         channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), Channel.METHOD_CHANNEL.id());
-        tokenChannel= new MethodChannel(flutterPluginBinding.getBinaryMessenger(), Channel.METHOD_TOKEN_CHANNEL.id());
         channel.setMethodCallHandler(this);
         this.context = flutterPluginBinding.getApplicationContext();
         hmsProfile = new FlutterHmsProfile(context);
