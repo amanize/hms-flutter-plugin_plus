@@ -73,7 +73,6 @@ import io.flutter.plugin.common.MethodChannel.Result;
 public class PushPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware {
     private static final String TAG = "HmsFlutterPush";
     private MethodChannel channel;
-    private static MethodChannel tokenChannel;
     private Context context;
     private HmsLocalNotification hmsLocalNotification;
     private NotificationIntentListener notificationIntentListener;
@@ -83,12 +82,6 @@ public class PushPlugin implements FlutterPlugin, MethodCallHandler, ActivityAwa
     private FlutterHmsConsent hmsConsent;
     private Activity activity;
     private final List<EventChannel> eventChannels = new ArrayList<>();
-
-    public static synchronized void sendPlatformMessage(String token){
-        Log.e("BANG", String.format("TOKEN SENDED TO FLUTTER: %s", token));
-        PushPlugin.tokenChannel.invokeMethod("tokenReceived", token);
-        Log.e("BANG", "TOKEN SENDED TO FLUTTER: SUCCESS");
-    }
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -187,7 +180,7 @@ public class PushPlugin implements FlutterPlugin, MethodCallHandler, ActivityAwa
                 break;
             case consentOff:
                 hmsConsent.consentOff(result);
-                break;        
+                break;
             default:
                 onMethodCallToken(call, result);
         }
@@ -196,17 +189,9 @@ public class PushPlugin implements FlutterPlugin, MethodCallHandler, ActivityAwa
     private void onMethodCallToken(@NonNull MethodCall call, @NonNull Result result) {
         switch (Method.valueOf(call.method)) {
             case getToken:
-//                hmsInstanceId.getToken(Utils.getStringArgument(call, Param.SCOPE.code()));
-//                result.success(null);
-                Thread thread= new Thread() {
-                    @Override
-                    public void run() {
-                        Task<String> methodCall = hmsInstanceId.getTokenTask(Utils.getStringArgument(call, Param.SCOPE.code()));
-                        methodCall.addOnSuccessListener(s ->result.success(s));
-                        methodCall.addOnFailureListener(e ->result.error("1","Token error",e));
-                    }
-                };
-                thread.start();
+                Task<String> methodCall = hmsInstanceId.getTokenTask(Utils.getStringArgument(call, Param.SCOPE.code()));
+                methodCall.addOnSuccessListener(s -> result.success(s));
+                methodCall.addOnFailureListener(e -> result.error("1", "Token error", e));
                 break;
             case deleteToken:
                 hmsInstanceId.deleteToken(Utils.getStringArgument(call, Param.SCOPE.code()), result);

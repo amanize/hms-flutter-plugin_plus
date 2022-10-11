@@ -24,6 +24,7 @@ import android.util.Log;
 import com.huawei.agconnect.config.AGConnectServicesConfig;
 import com.huawei.hmf.tasks.ExecuteResult;
 import com.huawei.hmf.tasks.Task;
+import com.huawei.hmf.tasks.TaskCompletionSource;
 import com.huawei.hmf.tasks.Tasks;
 import com.huawei.hms.aaid.HmsInstanceId;
 import com.huawei.hms.aaid.entity.AAIDResult;
@@ -42,6 +43,9 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * class FlutterHmsInstanceId
@@ -52,6 +56,7 @@ public class FlutterHmsInstanceId {
     private static final String TAG = FlutterHmsInstanceId.class.getSimpleName();
     private final HMSLogger hmsLogger;
     private final Context context;
+    private final ExecutorService cachedThreadPool =  Executors.newCachedThreadPool();
 
     public FlutterHmsInstanceId(Context context) {
         this.context = context;
@@ -94,53 +99,57 @@ public class FlutterHmsInstanceId {
     }
 
     public Task<String> getTokenTask(String scope) {
-        String appId = AGConnectServicesConfig.fromContext(context).getString(Core.CLIENT_APP_ID);
-        if (Utils.isEmpty(appId)) {
-            appId = "";
-        }
-        String token = "";
-        hmsLogger.startMethodExecutionTimer("getToken");
-        try {
-            String defaultScope = scope == null ? Core.DEFAULT_TOKEN_SCOPE : scope;
-            if (defaultScope.trim().isEmpty()) {
-                defaultScope = Core.DEFAULT_TOKEN_SCOPE;
+        TaskCompletionSource<String> taskComletionSource = new TaskCompletionSource<String>();
+
+        cachedThreadPool.execute(()->{
+            String appId = AGConnectServicesConfig.fromContext(context).getString(Core.CLIENT_APP_ID);
+            if (Utils.isEmpty(appId)) {
+                appId = "";
             }
-            token = HmsInstanceId.getInstance(context).getToken(appId, defaultScope);
-
-            hmsLogger.sendSingleEvent("getToken");
-            Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN, token);
-            return Tasks.fromResult(token);
-        } catch (ResolvableApiException e) {
-
-            hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
-            PendingIntent resolution = e.getResolution();
-            if (resolution != null) {
-                try {
-                    hmsLogger.sendSingleEvent("getToken");
-                    resolution.send();
-                } catch (PendingIntent.CanceledException ex) {
-                    HMSLogger.getInstance(PluginContext.getContext()).sendSingleEvent("onTokenError", ex.getMessage());
+            String token = "";
+            hmsLogger.startMethodExecutionTimer("getToken");
+            try {
+                String defaultScope = scope == null ? Core.DEFAULT_TOKEN_SCOPE : scope;
+                if (defaultScope.trim().isEmpty()) {
+                    defaultScope = Core.DEFAULT_TOKEN_SCOPE;
                 }
-            }
-            Intent resolutionIntent = e.getResolutionIntent();
-            if (resolutionIntent != null) {
-                hmsLogger.sendSingleEvent("getToken");
-                resolutionIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                PluginContext.getContext().startActivity(resolutionIntent);
-            }
-            return Tasks.fromException(e);
-        } catch (ApiException e) {
-            hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
-            Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
-                    e.getLocalizedMessage());
-            return Tasks.fromException(e);
-        } catch (Exception e) {
-            hmsLogger.sendSingleEvent("getToken", Code.RESULT_UNKNOWN.code());
-            Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
-                    e.getLocalizedMessage());
-            return Tasks.fromException(e);
-        }
+                token = HmsInstanceId.getInstance(context).getToken(appId, defaultScope);
 
+                hmsLogger.sendSingleEvent("getToken");
+                Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN, token);
+                taskComletionSource.setResult(token);
+            } catch (ResolvableApiException e) {
+
+                hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
+                PendingIntent resolution = e.getResolution();
+                if (resolution != null) {
+                    try {
+                        hmsLogger.sendSingleEvent("getToken");
+                        resolution.send();
+                    } catch (PendingIntent.CanceledException ex) {
+                        HMSLogger.getInstance(PluginContext.getContext()).sendSingleEvent("onTokenError", ex.getMessage());
+                    }
+                }
+                Intent resolutionIntent = e.getResolutionIntent();
+                if (resolutionIntent != null) {
+                    hmsLogger.sendSingleEvent("getToken");
+                    resolutionIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    PluginContext.getContext().startActivity(resolutionIntent);
+                }
+                taskComletionSource.setException(e);
+            } catch (ApiException e) {
+                hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
+                Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
+                        e.getLocalizedMessage());
+                taskComletionSource.setException(e);
+            } catch (Exception e) {
+                hmsLogger.sendSingleEvent("getToken", Code.RESULT_UNKNOWN.code());
+                Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
+                        e.getLocalizedMessage());
+                taskComletionSource.setException(e);
+            }
+        });
+    return taskComletionSource.getTask();
     }
 
     public void getToken(final String scope) {
