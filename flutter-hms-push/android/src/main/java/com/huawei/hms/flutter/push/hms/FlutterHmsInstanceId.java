@@ -166,11 +166,9 @@ public class FlutterHmsInstanceId {
                     defaultScope = Core.DEFAULT_TOKEN_SCOPE;
                 }
                 token = HmsInstanceId.getInstance(context).getToken(appId, defaultScope);
-                PushPlugin.sendPlatformMessage(token);
                 hmsLogger.sendSingleEvent("getToken");
                 Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN, token);
             } catch (ResolvableApiException e) {
-
                 hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
                 PendingIntent resolution = e.getResolution();
                 if (resolution != null) {

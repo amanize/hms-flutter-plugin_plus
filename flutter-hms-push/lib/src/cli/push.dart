@@ -83,14 +83,12 @@ abstract class Push {
   /// The requested token will be emitted to the token stream. Listen for the stream
   /// from [getTokenStream] to obtain the token.
   static Future<String> getToken(String scope) async {
-    print('HMS token requested');
     var token = await _methodChannel.invokeMethod<String>(
       'getToken',
       <String, String>{
         'scope': scope,
       },
     );
-    print('HMS token call ended');
     return token as String;
   }
 
