@@ -146,7 +146,7 @@ public class FlutterHmsMessageService extends HmsMessageService {
             if (remoteMessage != null) {
                 JSONObject jsonObject = new JSONObject(RemoteMessageUtils.toMap(remoteMessage));
                 Utils.sendIntent(PluginContext.getContext(), PushIntent.REMOTE_DATA_MESSAGE_INTENT_ACTION,
-                    PushIntent.DATA_MESSAGE, jsonObject.toString());
+                        PushIntent.DATA_MESSAGE, jsonObject.toString());
             }
         } else {
             PluginContext.initialize(applicationContext);

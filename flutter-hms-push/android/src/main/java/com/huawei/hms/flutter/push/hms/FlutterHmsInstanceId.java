@@ -22,11 +22,14 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.huawei.agconnect.config.AGConnectServicesConfig;
+import com.huawei.hmf.tasks.ExecuteResult;
 import com.huawei.hmf.tasks.Task;
+import com.huawei.hmf.tasks.Tasks;
 import com.huawei.hms.aaid.HmsInstanceId;
 import com.huawei.hms.aaid.entity.AAIDResult;
 import com.huawei.hms.common.ApiException;
 import com.huawei.hms.common.ResolvableApiException;
+import com.huawei.hms.flutter.push.PushPlugin;
 import com.huawei.hms.flutter.push.constants.Code;
 import com.huawei.hms.flutter.push.constants.Core;
 import com.huawei.hms.flutter.push.constants.PushIntent;
@@ -90,6 +93,56 @@ public class FlutterHmsInstanceId {
         result.success(appId);
     }
 
+    public Task<String> getTokenTask(String scope) {
+        String appId = AGConnectServicesConfig.fromContext(context).getString(Core.CLIENT_APP_ID);
+        if (Utils.isEmpty(appId)) {
+            appId = "";
+        }
+        String token = "";
+        hmsLogger.startMethodExecutionTimer("getToken");
+        try {
+            String defaultScope = scope == null ? Core.DEFAULT_TOKEN_SCOPE : scope;
+            if (defaultScope.trim().isEmpty()) {
+                defaultScope = Core.DEFAULT_TOKEN_SCOPE;
+            }
+            token = HmsInstanceId.getInstance(context).getToken(appId, defaultScope);
+
+            hmsLogger.sendSingleEvent("getToken");
+            Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN, token);
+            return Tasks.fromResult(token);
+        } catch (ResolvableApiException e) {
+
+            hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
+            PendingIntent resolution = e.getResolution();
+            if (resolution != null) {
+                try {
+                    hmsLogger.sendSingleEvent("getToken");
+                    resolution.send();
+                } catch (PendingIntent.CanceledException ex) {
+                    HMSLogger.getInstance(PluginContext.getContext()).sendSingleEvent("onTokenError", ex.getMessage());
+                }
+            }
+            Intent resolutionIntent = e.getResolutionIntent();
+            if (resolutionIntent != null) {
+                hmsLogger.sendSingleEvent("getToken");
+                resolutionIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                PluginContext.getContext().startActivity(resolutionIntent);
+            }
+            return Tasks.fromException(e);
+        } catch (ApiException e) {
+            hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
+            Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
+                    e.getLocalizedMessage());
+            return Tasks.fromException(e);
+        } catch (Exception e) {
+            hmsLogger.sendSingleEvent("getToken", Code.RESULT_UNKNOWN.code());
+            Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
+                    e.getLocalizedMessage());
+            return Tasks.fromException(e);
+        }
+
+    }
+
     public void getToken(final String scope) {
         new Thread(() -> {
             String appId = AGConnectServicesConfig.fromContext(context).getString(Core.CLIENT_APP_ID);
@@ -104,9 +157,11 @@ public class FlutterHmsInstanceId {
                     defaultScope = Core.DEFAULT_TOKEN_SCOPE;
                 }
                 token = HmsInstanceId.getInstance(context).getToken(appId, defaultScope);
+                PushPlugin.sendPlatformMessage(token);
                 hmsLogger.sendSingleEvent("getToken");
                 Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN, token);
             } catch (ResolvableApiException e) {
+
                 hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
                 PendingIntent resolution = e.getResolution();
                 if (resolution != null) {
@@ -126,11 +181,11 @@ public class FlutterHmsInstanceId {
             } catch (ApiException e) {
                 hmsLogger.sendSingleEvent("getToken", String.valueOf(e.getStatusCode()));
                 Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
-                    e.getLocalizedMessage());
+                        e.getLocalizedMessage());
             } catch (Exception e) {
                 hmsLogger.sendSingleEvent("getToken", Code.RESULT_UNKNOWN.code());
                 Utils.sendIntent(context, PushIntent.TOKEN_INTENT_ACTION, PushIntent.TOKEN_ERROR,
-                    e.getLocalizedMessage());
+                        e.getLocalizedMessage());
             }
         }).start();
     }
@@ -145,15 +200,15 @@ public class FlutterHmsInstanceId {
                 JSONObject result = new JSONObject();
                 result.putOpt("multiSenderToken", token);
                 Utils.sendIntent(context, PushIntent.MULTI_SENDER_TOKEN_INTENT_ACTION, PushIntent.MULTI_SENDER_TOKEN,
-                    result.toString());
+                        result.toString());
             } catch (ApiException e) {
                 hmsLogger.sendSingleEvent("getMultiSenderToken", String.valueOf(e.getStatusCode()));
                 Utils.sendIntent(context, PushIntent.MULTI_SENDER_TOKEN_INTENT_ACTION,
-                    PushIntent.MULTI_SENDER_TOKEN_ERROR, e.getLocalizedMessage());
+                        PushIntent.MULTI_SENDER_TOKEN_ERROR, e.getLocalizedMessage());
             } catch (Exception e) {
                 hmsLogger.sendSingleEvent("getMultiSenderToken", Code.RESULT_UNKNOWN.code());
                 Utils.sendIntent(context, PushIntent.MULTI_SENDER_TOKEN_INTENT_ACTION,
-                    PushIntent.MULTI_SENDER_TOKEN_ERROR, e.getLocalizedMessage());
+                        PushIntent.MULTI_SENDER_TOKEN_ERROR, e.getLocalizedMessage());
             }
         }).start();
     }

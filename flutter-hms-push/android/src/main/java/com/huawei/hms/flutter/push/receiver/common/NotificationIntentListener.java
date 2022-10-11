@@ -64,7 +64,7 @@ public class NotificationIntentListener implements NewIntentListener {
         return NotificationIntentListener.initialNotification;
     }
 
-    private static synchronized void setInitialNotification(Map<String, Object> initialNotification) {
+    public static synchronized void setInitialNotification(Map<String, Object> initialNotification) {
         NotificationIntentListener.initialNotification = initialNotification;
     }
 

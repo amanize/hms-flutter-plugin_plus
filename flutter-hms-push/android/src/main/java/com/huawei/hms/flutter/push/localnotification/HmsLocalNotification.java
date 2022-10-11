@@ -66,6 +66,8 @@ public class HmsLocalNotification {
 
     public void getInitialNotification(final Result result) {
         result.success(NotificationIntentListener.getInitialNotification());
+        NotificationIntentListener.setInitialNotification(null);
+
     }
 
     public void getNotifications(final Result result) {

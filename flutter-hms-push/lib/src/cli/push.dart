@@ -82,13 +82,16 @@ abstract class Push {
   ///
   /// The requested token will be emitted to the token stream. Listen for the stream
   /// from [getTokenStream] to obtain the token.
-  static void getToken(String scope) {
-    _methodChannel.invokeMethod(
+  static Future<String> getToken(String scope) async {
+    print('HMS token requested');
+    var token = await _methodChannel.invokeMethod<String>(
       'getToken',
       <String, String>{
         'scope': scope,
       },
     );
+    print('HMS token call ended');
+    return token as String;
   }
 
   /// Obtains the generation timestamp of an AAID.

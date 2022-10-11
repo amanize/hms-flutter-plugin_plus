@@ -22,7 +22,9 @@ import android.os.Handler;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.JobIntentService;
+
+import com.huawei.hms.flutter.push.constants.Param;
+import com.huawei.hms.push.RemoteMessage;
 
 import io.flutter.plugin.common.PluginRegistry.PluginRegistrantCallback;
 
@@ -58,7 +60,9 @@ public class BackgroundMessagingService extends JobIntentService {
     }
 
     public static void enqueueWork(final Context context, final Intent intent) {
-        JobIntentService.enqueueWork(context, BackgroundMessagingService.class, JOB_ID, intent);
+        RemoteMessage message = (RemoteMessage) intent.getExtras().get(Param.MESSAGE.code());
+
+        JobIntentService.enqueueWork(context, BackgroundMessagingService.class, JOB_ID, intent, true);
     }
 
     public static synchronized void startBgIsolate(final Context context, final long callbackHandle) {

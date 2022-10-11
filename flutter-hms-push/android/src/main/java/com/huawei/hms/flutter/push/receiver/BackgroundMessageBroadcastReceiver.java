@@ -36,8 +36,12 @@ public class BackgroundMessageBroadcastReceiver extends BroadcastReceiver {
             final String action = intent.getAction();
             if (BACKGROUND_REMOTE_MESSAGE.equals(action)) {
                 Bundle result = intent.getExtras();
+
+
                 if (result != null) {
-                    BackgroundMessagingService.enqueueWork(context, intent);
+                    Intent backgroundIntent = new Intent(context, BackgroundMessagingService.class);
+                    backgroundIntent.putExtras(intent);
+                    BackgroundMessagingService.enqueueWork(context, backgroundIntent);
                 }
             }
         }
